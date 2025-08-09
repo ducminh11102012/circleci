@@ -1,0 +1,40 @@
+version: 2.1
+
+jobs:
+  build:
+    resource_class: windows.medium
+    machine:
+      image: windows-server-2022-gui:current
+      shell: powershell.exe -ExecutionPolicy Bypass
+    steps:
+      - checkout
+      - run:
+          name: Enable RDP and disable NLA
+          command: |
+            reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+            reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f
+            netsh advfirewall firewall set rule group="remote desktop" new enable=yes
+      - run:
+          name: Create admin user Binhminh12
+          command: |
+            net user Binhminh12 Binhminh12 /add
+            net localgroup Administrators Binhminh12 /add
+      - run:
+          name: Download and start ngrok
+          command: |
+            Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile ngrok.zip
+            Expand-Archive ngrok.zip -DestinationPath .
+            .\ngrok.exe authtoken 2nyiyWrhpT6OwyUoaoZ2zdE9nNo_7KtHBQxaox3Wx2t9qBHTT
+            Start-Process -NoNewWindow -FilePath .\ngrok.exe -ArgumentList "tcp 3389"
+      - run:
+          name: Keep alive loop
+          command: |
+            while ($true) {
+              Write-Host "running"
+              Start-Sleep -Seconds 3
+            }
+
+workflows:
+  build_and_run:
+    jobs:
+      - build
